@@ -5,23 +5,34 @@ import org.springframework.ai.reader.TextReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.transformers.TransformersEmbeddingModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.core.io.ClassPathResource;
 
 import java.util.List;
 
 /**
  * RAG setup: loads a small knowledge doc from the classpath, splits it into
- * chunks, embeds them, and stores them in an in-memory vector store.
+ * chunks, embeds them locally (ONNX model bundled in the jar — no API key,
+ * no download), and stores them in an in-memory vector store.
+ * All beans are lazy so the app boots fast; the ONNX model loads on first
+ * /api/rag call.
  */
 @Configuration
 public class RagConfig {
 
     @Bean
-    @Lazy  // don't embed at startup — only when /api/rag is first called
+    @Lazy
+    public EmbeddingModel embeddingModel() {
+        // Bundled all-MiniLM-L6-v2 ONNX model + tokenizer — fully offline.
+        return new TransformersEmbeddingModel();
+    }
+
+    @Bean
+    @Lazy
     public VectorStore vectorStore(EmbeddingModel embeddingModel) {
         SimpleVectorStore store = SimpleVectorStore.builder(embeddingModel).build();
 

@@ -10,15 +10,10 @@ spring:
         options:
           model: openai/gpt-oss-120b
           temperature: 0.7
-      embedding:
-        options:
-          model: text-embedding-3-small
-    # Alternative: real OpenAI (needs billing credits)
-    # openai:
-    #   api-key: ${OPENAI_API_KEY:}
-    #   chat:
-    #     options:
-    #       model: gpt-4o-mini
+    # Disable eager ONNX auto-config; we create a lazy bean manually.
+    embedding:
+      transformer:
+        enabled: false
 
 server:
   port: 8080

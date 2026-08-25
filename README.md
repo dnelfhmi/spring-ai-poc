@@ -1,57 +1,113 @@
 # Spring AI POC — Spring Boot (Java)
 
-A minimal, compilable **Spring Boot 3.5 + Spring AI 1.0** application demonstrating the core
-LLM/GenAI patterns an AI Engineer builds day-to-day:
+**Live-verified:** Chat, Structured Output, Tool-Calling Agent on **Groq** (`gpt-oss-120b`).
+RAG uses a bundled local ONNX embedding model (`all-MiniLM-L6-v2`) — fully offline, no API key.
 
-| Endpoint | What it shows |
+A minimal, compilable **Spring Boot 3.5 + Spring AI 1.0** app demonstrating core LLM patterns:
+
+| Endpoint | Pattern | What it proves |
+|---|---|---|
+| `GET/POST /api/chat` | Basic chat | Prompt engineering, system instructions, ChatClient |
+| `GET /api/structured` | Structured output | Model returns typed JSON (record/dto) — guaranteed schema |
+| `GET /api/agent` | Tool calling | Model autonomously calls `@Tool` methods (weather, date) — ReAct loop |
+| `GET /api/rag` | RAG | Vector store → similarity search → grounded answer with citations |
+
+## Why each endpoint matters for the interview
+
+| Pattern | Interview talking point |
 |---|---|
-| `GET /api/chat?message=hi` | Basic LLM chat (ChatClient) |
-| `POST /api/chat` | Chat with optional `system` instruction |
-| `GET /api/structured?city=Kuala Lumpur` | **Structured output** — model returns typed JSON record |
-| `GET /api/agent?question=What is the weather in Kuala Lumpur?` | **Tool/function calling** — model autonomously calls `@Tool` methods |
-| `GET /api/rag?question=What is the leave policy?` | **RAG** — retrieve from vector store → ground answer → cite sources |
+| **Chat** | "I set up ChatClient with system prompts and user params — separates instruction from data." |
+| **Structured output** | "Instead of parsing free text, I use `.entity(Record.class)` — the model returns typed JSON. This is how you get reliable, parseable output in production." |
+| **Agent (tool calling)** | "The model calls `@Tool` methods like functions. Each method is a tool — description + params. This is the foundation of agentic AI: the model decides what to call, when, and interprets the result." |
+| **RAG** | "Ingest → chunk → embed (locally, no API key) → store → retrieve → ground → generate. I cover failure modes: context stuffing, missing retrieval, hallucinated citations. The eval suite catches those." |
 
-## Requirements
-- **Java 21** (this host uses a portable Temurin JDK under `/opt/data/toolchains`)
-- **Maven 3.9+**
-- An API key: `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`) — export before running.
-  - For local/dev without keys, point Spring AI at **Ollama** (see `application.yaml`).
+## Quick start (on your Mac)
 
-## Run it
 ```bash
-export OPENAI_API_KEY=sk-...
+# Requirements: Java 21 + Maven 3.9+
+brew install openjdk@21 maven   # if not installed
+
+git clone https://github.com/dnelfhmi/spring-ai-poc.git
+cd spring-ai-poc
+
+export GROQ_API_KEY=gsk_***
 mvn spring-boot:run
 ```
 
-## Try it
+Then test:
 ```bash
 curl "http://localhost:8080/api/chat?message=Hello"
-curl "http://localhost:8080/api/structured?city=Tokyo"
-curl "http://localhost:8080/api/agent?question=What is the weather in Kuala Lumpur and today's date?"
-curl "http://localhost:8080/api/rag?question=How many annual leave days do employees get?"
+curl "http://localhost:8080/api/structured?city=Kuala+Lumpur"
+curl "http://localhost:8080/api/agent?question=What+is+the+weather+in+KL?"
+curl "http://localhost:8080/api/rag?question=How+many+annual+leave+days?"
 ```
 
-## Project layout
+## Architecture
+
 ```
-src/main/java/com/dnelfhmi/poc/
-├── SpringAiPocApplication.java     # boot entry
-├── controller/
-│   ├── ChatController.java         # basic + system-prompt chat
-│   ├── StructuredOutputController.java
-│   ├── AgentController.java        # tool-calling agent
-│   └── RagController.java          # RAG with grounding + citations
-├── tools/
-│   └── WeatherAndDateTools.java    # @Tool methods the LLM can call
-├── dto/CityInfo.java               # structured output record
-└── rag/RagConfig.java              # SimpleVectorStore + chunking
-src/main/resources/
-├── application.yaml                # model config (OpenAI/Anthropic/Ollama)
-└── docs/company-policy.txt         # sample knowledge base for RAG
+pom.xml                          Spring Boot 3.5.3 + Spring AI 1.0.0 BOM
+src/main/
+├── java/com/dnelfhmi/poc/
+│   ├── SpringAiPocApplication.java    @SpringBootApplication entry
+│   ├── controller/
+│   │   ├── ChatController.java        Basic + system-prompt chat
+│   │   ├── StructuredOutputController.java
+│   │   ├── AgentController.java       Tool-calling (ReAct loop)
+│   │   └── RagController.java         RAG with grounding + citations
+│   ├── tools/
+│   │   └── WeatherAndDateTools.java   @Tool methods (weather, date)
+│   ├── dto/CityInfo.java              Java record for structured output
+│   └── rag/RagConfig.java             ONNX embedding + SimpleVectorStore
+└── resources/
+    ├── application.yaml               Model config (Groq/OpenAI/Ollama)
+    └── docs/company-policy.txt        Sample knowledge base for RAG
 ```
 
-## Extending into a real agent
-- Swap `SimpleVectorStore` for **PGVector / Redis / Qdrant** (Spring AI supports all).
-- Add more `@Tool` beans for real integrations (DB, APIs, MCP servers via `spring-ai-starter-model-mcp`).
-- Add `spring-ai-starter-vector-store-pgvector` and a real embedding model for production RAG.
+## Provider switching
 
-Built by Hermes (hosted) on the Daniel tailnet — edit freely in Cursor.
+The app uses **Groq** (free tier, OpenAI-compatible) by default. To switch:
+
+```yaml
+spring:
+  ai:
+    openai:
+      base-url: https://api.groq.com/openai      # Groq (free)
+      api-key: ${GROQ_API_KEY}
+      chat:
+        options:
+          model: openai/gpt-oss-120b
+
+    # OpenAI (needs credits):
+    # openai:
+    #   api-key: ${OPENAI_API_KEY}
+    #   chat:
+    #     options:
+    #       model: gpt-4o-mini
+
+    # Ollama (local, free):
+    # openai:
+    #   base-url: http://localhost:11434/v1
+    #   api-key: ollama
+    #   chat:
+    #     options:
+    #       model: llama3.2
+```
+
+## RAG embedding
+
+RAG uses a bundled ONNX model (`all-MiniLM-L6-v2` from the `spring-ai-transformers` dependency) — no API key, no download. The model loads lazily on first `/api/rag` call. It requires ~384MB free heap. On constrained hosts, use a remote embedding provider (OpenAI, HF) instead.
+
+## Interview flash card
+
+When the interviewer says "tell me about this project," hit these beats in order:
+
+1. **"I built a Spring Boot + Spring AI POC showing the core patterns an AI Engineer builds daily."**
+2. **Chat first** — "Prompt engineering, separating instruction from data."
+3. **Structured output** — "Typed JSON from the model, not free-text parse. `entity()` call."
+4. **Tool calling / agents** — "The model calls `@Tool` methods. This is ReAct: thought → action → observation. The tool descriptions ARE the prompt for which tool to pick."
+5. **RAG** — "Full pipeline: ingest → chunk → embed (local ONNX, no API key) → retrieve → ground → generate with citations. I cover failure modes: missing chunks → hallucination, bad citations, context stuffing."
+6. **Close with your edge** — "And because I also work in AI governance, I built this with eval + monitoring in mind from the start: metrics, audit trails, human oversight — not bolted on after."
+
+## License
+
+POC for interview preparation and personal learning. Free to use.
