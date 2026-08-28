@@ -97,17 +97,6 @@ spring:
 
 RAG uses a bundled ONNX model (`all-MiniLM-L6-v2` from the `spring-ai-transformers` dependency) — no API key, no download. The model loads lazily on first `/api/rag` call. It requires ~384MB free heap. On constrained hosts, use a remote embedding provider (OpenAI, HF) instead.
 
-## Interview flash card
-
-When the interviewer says "tell me about this project," hit these beats in order:
-
-1. **"I built a Spring Boot + Spring AI POC showing the core patterns an AI Engineer builds daily."**
-2. **Chat first** — "Prompt engineering, separating instruction from data."
-3. **Structured output** — "Typed JSON from the model, not free-text parse. `entity()` call."
-4. **Tool calling / agents** — "The model calls `@Tool` methods. This is ReAct: thought → action → observation. The tool descriptions ARE the prompt for which tool to pick."
-5. **RAG** — "Full pipeline: ingest → chunk → embed (local ONNX, no API key) → retrieve → ground → generate with citations. I cover failure modes: missing chunks → hallucination, bad citations, context stuffing."
-6. **Close with your edge** — "And because I also work in AI governance, I built this with eval + monitoring in mind from the start: metrics, audit trails, human oversight — not bolted on after."
-
 ## License
 
 POC for interview preparation and personal learning. Free to use.
