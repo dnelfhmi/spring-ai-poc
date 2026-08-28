@@ -12,15 +12,6 @@ A minimal, compilable **Spring Boot 3.5 + Spring AI 1.0** app demonstrating core
 | `GET /api/agent` | Tool calling | Model autonomously calls `@Tool` methods (weather, date) — ReAct loop |
 | `GET /api/rag` | RAG | Vector store → similarity search → grounded answer with citations |
 
-## Why each endpoint matters for the interview
-
-| Pattern | Interview talking point |
-|---|---|
-| **Chat** | "I set up ChatClient with system prompts and user params — separates instruction from data." |
-| **Structured output** | "Instead of parsing free text, I use `.entity(Record.class)` — the model returns typed JSON. This is how you get reliable, parseable output in production." |
-| **Agent (tool calling)** | "The model calls `@Tool` methods like functions. Each method is a tool — description + params. This is the foundation of agentic AI: the model decides what to call, when, and interprets the result." |
-| **RAG** | "Ingest → chunk → embed (locally, no API key) → store → retrieve → ground → generate. I cover failure modes: context stuffing, missing retrieval, hallucinated citations. The eval suite catches those." |
-
 ## Quick start (on your Mac)
 
 ```bash
